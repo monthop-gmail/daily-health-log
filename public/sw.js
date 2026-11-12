@@ -1,6 +1,7 @@
-// Service worker: เก็บหน้าแอปไว้ในเครื่องให้เปิดได้ทันที/ตอนออฟไลน์
-// ข้อมูล (/api/*) ไม่ผ่านแคช — ฝั่งแอปจัดการ outbox เอง
-const CACHE = 'daily-log-v1';
+// Service worker
+// - เก็บหน้าแอปไว้ในเครื่องให้เปิดได้ทันที/ตอนออฟไลน์ (ข้อมูล /api/* ไม่ผ่านแคช)
+// - รับการแจ้งเตือน (Web Push) เตือนยาและนัดหมอ
+const CACHE = 'daily-log-v2';
 const SHELL = [
   '/',
   '/app.js',
@@ -58,4 +59,62 @@ self.addEventListener('fetch', (event) => {
       return (await network) || new Response('ออฟไลน์', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
     })()
   );
+});
+
+// ---------- การแจ้งเตือน ----------
+
+self.addEventListener('push', (event) => {
+  let d = {};
+  try {
+    d = event.data ? event.data.json() : {};
+  } catch {
+    d = { title: 'บันทึกประจำวัน', body: event.data ? event.data.text() : '' };
+  }
+  const options = {
+    body: d.body || '',
+    tag: d.tag || undefined,
+    renotify: !!d.tag,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    lang: 'th',
+    requireInteraction: d.type === 'med',
+    data: d,
+    actions: d.type === 'med' ? [{ action: 'take', title: '✓ ใช้ยาแล้ว' }, { action: 'open', title: 'ดูรายการ' }] : [],
+  };
+  event.waitUntil(self.registration.showNotification(d.title || 'บันทึกประจำวัน', options));
+});
+
+async function openApp(path) {
+  const url = new URL(path || '/', self.location.origin).href;
+  const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const w of wins) {
+    if (new URL(w.url).origin === self.location.origin) {
+      await w.focus();
+      return w.navigate(url).catch(() => w);
+    }
+  }
+  return self.clients.openWindow(url);
+}
+
+self.addEventListener('notificationclick', (event) => {
+  const d = event.notification.data || {};
+  event.notification.close();
+  if (event.action === 'take' && d.type === 'med') {
+    // บันทึกจากปุ่มบนการแจ้งเตือนได้เลย ไม่ต้องเปิดแอป
+    event.waitUntil(
+      fetch('/api/meds/take', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slot: d.slot, date: d.date }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(String(res.status));
+          return self.registration.showNotification('บันทึกแล้ว ✓', { body: d.title || '', tag: d.tag, icon: '/icon-192.png' });
+        })
+        .catch(() => openApp(d.url))
+    );
+    return;
+  }
+  event.waitUntil(openApp(d.url));
 });

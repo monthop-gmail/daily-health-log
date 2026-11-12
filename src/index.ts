@@ -11,14 +11,12 @@
  *   POST /api/sync         {ops:[{type:'put',entry}|{type:'del',id,updated_at}]}
  *   GET  /api/suggestions                        → ข้อความที่ใช้บ่อยของแต่ละหมวด
  *   GET  /api/categories / PUT /api/categories   → ปุ่มหมวดบันทึกด่วน
+ *   ยา / นัดหมอ / การแจ้งเตือน → ดู src/care.ts
  */
+import { Env, HttpError, json, readJson, b64url, ID_RE, MIN_TS, enc } from './util';
+import { handleCare, runReminders } from './care';
 
-export interface Env {
-  DB: D1Database;
-  ASSETS: Fetcher;
-  APP_PASSWORD?: string;
-  API_TOKEN?: string;
-}
+export type { Env };
 
 type Entry = {
   id: string;
@@ -26,6 +24,7 @@ type Entry = {
   category: string;
   text: string;
   level: number | null;
+  meta: string | null; // JSON
   updated_at: number;
 };
 
@@ -42,9 +41,7 @@ const COOKIE = 'dl_session';
 const SESSION_TTL_MS = 180 * 24 * 3600 * 1000;
 const MAX_LOGIN_FAILS = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const CAT_KEY_RE = /^[A-Za-z0-9_]{1,40}$/;
-const MIN_TS = Date.UTC(2000, 0, 1);
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { key: 'med', label: 'ยา', emoji: '💊', presets: ['ยาเช้า', 'ยากลางวัน', 'ยาเย็น', 'ยาก่อนนอน'] },
@@ -60,33 +57,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { key: 'note', label: 'จดไว้', emoji: '📝', presets: [] },
 ];
 
-const enc = new TextEncoder();
-
 // ---------- helpers ----------
-
-class HttpError extends Error {
-  constructor(public status: number, public code: string) {
-    super(code);
-  }
-}
-
-function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store',
-      'x-content-type-options': 'nosniff',
-      ...headers,
-    },
-  });
-}
-
-function b64url(buf: ArrayBuffer): string {
-  let s = '';
-  for (const b of new Uint8Array(buf)) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
 
 async function hmac(key: string, msg: string): Promise<string> {
   const k = await crypto.subtle.importKey('raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -150,14 +121,6 @@ async function isAuthed(req: Request, env: Env): Promise<boolean> {
   return token ? checkSession(env, token) : false;
 }
 
-async function readJson(req: Request): Promise<any> {
-  try {
-    return await req.json();
-  } catch {
-    throw new HttpError(400, 'bad_json');
-  }
-}
-
 function validateEntry(e: any, now: number): Entry | string {
   if (!e || typeof e !== 'object') return 'bad_entry';
   if (typeof e.id !== 'string' || !ID_RE.test(e.id)) return 'bad_id';
@@ -168,9 +131,15 @@ function validateEntry(e: any, now: number): Entry | string {
   if (text.length > 4000) return 'text_too_long';
   const level = e.level == null || e.level === '' ? null : Number(e.level);
   if (level !== null && (!Number.isInteger(level) || level < 1 || level > 5)) return 'bad_level';
+  let meta: string | null = null;
+  if (e.meta != null) {
+    if (typeof e.meta !== 'object' || Array.isArray(e.meta)) return 'bad_meta';
+    meta = JSON.stringify(e.meta);
+    if (meta.length > 2000) return 'meta_too_long';
+  }
   let updated = Number(e.updated_at);
   if (!Number.isFinite(updated) || updated < MIN_TS || updated > now + 60000) updated = now;
-  return { id: e.id, ts: Math.round(ts), category: e.category, text, level, updated_at: Math.round(updated) };
+  return { id: e.id, ts: Math.round(ts), category: e.category, text, level, meta, updated_at: Math.round(updated) };
 }
 
 function validateCategories(input: any): Category[] | string {
@@ -209,13 +178,13 @@ async function getCategories(env: Env): Promise<Category[]> {
 function upsertStmt(env: Env, e: Entry, now: number): D1PreparedStatement {
   // last-write-wins ตาม updated_at — ข้อมูลที่ค้างส่งตอนออฟไลน์จะไม่ทับของที่ใหม่กว่า
   return env.DB.prepare(
-    `INSERT INTO entries (id, ts, category, text, level, deleted, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, 0, ?7, ?6)
+    `INSERT INTO entries (id, ts, category, text, level, meta, deleted, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?8, 0, ?7, ?6)
      ON CONFLICT(id) DO UPDATE SET
        ts = excluded.ts, category = excluded.category, text = excluded.text,
-       level = excluded.level, deleted = 0, updated_at = excluded.updated_at
+       level = excluded.level, meta = excluded.meta, deleted = 0, updated_at = excluded.updated_at
      WHERE excluded.updated_at >= entries.updated_at`
-  ).bind(e.id, e.ts, e.category, e.text, e.level, e.updated_at, now);
+  ).bind(e.id, e.ts, e.category, e.text, e.level, e.updated_at, now, e.meta);
 }
 
 // ---------- routes ----------
@@ -280,12 +249,21 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const to = Number(url.searchParams.get('to') ?? 0) || now + 2 * 86400000;
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 5000) || 5000, 1), 50000);
     const { results } = await env.DB.prepare(
-      `SELECT id, ts, category, text, level, updated_at FROM entries
+      `SELECT id, ts, category, text, level, meta, updated_at FROM entries
        WHERE deleted = 0 AND ts >= ? AND ts < ? ORDER BY ts DESC LIMIT ?`
     )
       .bind(from, to, limit)
       .all<Entry>();
-    return json({ entries: results });
+    const entries = results.map((e) => {
+      let meta: unknown = null;
+      if (e.meta) {
+        try {
+          meta = JSON.parse(e.meta);
+        } catch {}
+      }
+      return { ...e, meta };
+    });
+    return json({ entries });
   }
 
   if (path === '/api/entries' && method === 'POST') {
@@ -296,7 +274,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const cat = cats.find((c) => c.key === raw || c.label === raw);
     if (!cat) return json({ error: 'unknown_category', categories: cats.map((c) => c.label) }, 400);
     const v = validateEntry(
-      { id: crypto.randomUUID(), ts: body.ts ?? now, category: cat.key, text: body.text, level: body.level, updated_at: now },
+      { id: crypto.randomUUID(), ts: body.ts ?? now, category: cat.key, text: body.text, level: body.level, meta: null, updated_at: now },
       now
     );
     if (typeof v === 'string') return json({ error: v }, 400);
@@ -370,6 +348,9 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ ok: true, categories: DEFAULT_CATEGORIES });
   }
 
+  const care = await handleCare(req, env, url, now);
+  if (care) return care;
+
   return json({ error: 'not_found' }, 404);
 }
 
@@ -384,5 +365,15 @@ export default {
       console.error('api_error', err);
       return json({ error: 'server_error' }, 500);
     }
+  },
+
+  // Cron ทุกนาที: ส่งการแจ้งเตือนยาและนัดหมอ
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      runReminders(env, controller.scheduledTime).then(
+        (r) => r.queued && console.log('reminders', JSON.stringify(r)),
+        (err) => console.error('reminders_error', err)
+      )
+    );
   },
 } satisfies ExportedHandler<Env>;

@@ -26,6 +26,9 @@
     }
   ],
 
+  // ทุกนาที: ตรวจว่าถึงเวลาเตือนยา/นัดหมอหรือยัง (ทำงานเฉพาะเมื่อมีเครื่องเปิดรับการแจ้งเตือน)
+  "triggers": { "crons": ["* * * * *"] },
+
   "observability": { "enabled": true }
 
   // Secrets (ตั้งด้วย npx wrangler secret put <NAME>):

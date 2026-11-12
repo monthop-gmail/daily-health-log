@@ -405,3 +405,162 @@ tr:last-child td { border-bottom: 0; }
   tr { break-inside: avoid; }
   .matrix th:first-child, .matrix td:first-child { position: static; }
 }
+
+/* =================== ยา / นัดหมอ / เมนูล่าง =================== */
+.app { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+.btn.sm { min-height: 38px; padding: 6px 14px; font-size: 15px; border-radius: 10px; }
+.topbar .btn { flex: none; }
+.sec { font-size: 15px; font-weight: 600; color: var(--muted); margin: 22px 0 8px; }
+.warn-box { background: var(--warn-soft); color: var(--warn); padding: 10px 12px; border-radius: 10px; }
+.linkbtn { border: 0; background: none; color: var(--accent); padding: 0 2px; font-weight: 500; text-decoration: underline; }
+
+/* เมนูล่าง */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+}
+@media (min-width: 700px) { .tabbar { border: 1px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; } }
+.tabbar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 4px;
+  border-radius: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+}
+.tabbar a svg { width: 23px; height: 23px; }
+.tabbar a.on { color: var(--accent); background: var(--accent-soft); }
+
+/* การ์ดยาวันนี้ */
+.care-card {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+.care-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.care-head h2 { font-size: 16px; margin: 0; font-weight: 600; }
+.care-head a { font-size: 14px; }
+.slot-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 6px; }
+.slot-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  line-height: 1.25;
+}
+.slot-name { font-weight: 600; font-size: 15px; }
+.slot-sub { font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.slot-note { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.slot-pill.done { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.slot-pill.done .slot-note { color: var(--accent); }
+.slot-pill.due { border-color: var(--warn); background: var(--warn-soft); }
+.slot-pill.due .slot-note { color: var(--warn); font-weight: 600; }
+.slot-pill.late { border-color: var(--danger); }
+.slot-pill.late .slot-note { color: var(--danger); font-weight: 600; }
+
+/* นัดถัดไป */
+.appt-next { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: center; }
+.appt-next.soon { border-color: var(--warn); }
+.an-when { display: flex; flex-direction: column; align-items: center; padding: 6px 4px; border-radius: 12px; background: var(--surface-2); font-size: 13px; line-height: 1.3; }
+.an-when b { font-size: 16px; }
+.appt-next.soon .an-when { background: var(--warn-soft); color: var(--warn); }
+.an-what { display: flex; flex-direction: column; min-width: 0; }
+.an-what small { color: var(--muted); font-size: 12.5px; }
+.an-what b { font-size: 16px; font-weight: 600; }
+.an-what span { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* หน้า ยา */
+.slot-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px; margin-bottom: 10px; }
+.slot-card.due { border-color: var(--warn); }
+.slot-card.late { border-color: var(--danger); }
+.slot-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.slot-card.done .slot-card-head .btn { color: var(--accent); }
+.slot-meds { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 15px; }
+.slot-meds li { display: grid; grid-template-columns: 24px 1fr; gap: 6px; }
+.med-list { display: grid; gap: 8px; }
+.med-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.med-item.stopped { opacity: .65; }
+.med-main { flex: 1; min-width: 0; display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: start; padding: 8px 4px; border: 0; background: none; text-align: left; }
+.tm-icon { font-size: 21px; text-align: center; line-height: 1.4; }
+.tm-body { display: flex; flex-direction: column; min-width: 0; }
+.tm-body b { font-weight: 600; }
+.tm-body span, .tm-body small { color: var(--muted); font-size: 14px; }
+.med-slots { color: var(--accent) !important; }
+.warn-note { color: var(--warn) !important; }
+details.stopped { margin-top: 14px; }
+details.stopped summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.slot-edit { display: grid; grid-template-columns: 1fr 112px auto auto; gap: 8px; align-items: center; padding: 6px 0; }
+.slot-edit .in { padding: 8px 10px; }
+
+/* แผ่นใช้ยา */
+.take-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.take-item { display: grid; grid-template-columns: 26px 30px 1fr; gap: 8px; align-items: start; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.take-item input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--accent); }
+.take-item:has(input:not(:checked)) { opacity: .55; }
+.done-note { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+
+/* แผ่นเพิ่มยา */
+.slot-picks { display: grid; gap: 6px; }
+.slot-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.slot-pick .slot-dose { visibility: hidden; padding: 6px 10px; font-size: 15px; }
+.slot-pick.on { border-color: var(--accent); }
+.slot-pick.on .slot-dose { visibility: visible; }
+.check { display: inline-flex; align-items: center; gap: 8px; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.check.big { display: flex; margin-top: 16px; flex-wrap: wrap; }
+.field.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field.two label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+.sheet-actions.wrap { flex-wrap: wrap; }
+
+/* หน้านัดหมอ */
+.appt-list { display: grid; gap: 8px; }
+.appt-item { display: grid; grid-template-columns: 56px 1fr; gap: 12px; width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: left; }
+.appt-date { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); line-height: 1.1; }
+.appt-date b { font-size: 24px; }
+.appt-date span { font-size: 13px; }
+.appt-info { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.appt-title { font-weight: 600; font-size: 16px; }
+.appt-meta { color: var(--muted); font-size: 14px; }
+.appt-details { font-size: 14px; white-space: pre-wrap; margin-top: 4px; padding: 6px 8px; border-radius: 8px; background: var(--surface-2); }
+.appt-result { font-size: 14px; white-space: pre-wrap; margin-top: 4px; color: var(--accent); }
+.appt-list.past .appt-date { background: var(--surface-2); color: var(--muted); }
+.appt-item.cancelled .appt-title { text-decoration: line-through; color: var(--muted); }
+
+/* รายงาน */
+.matrix.adh td.ok { color: var(--accent); }
+.matrix.adh td.part { color: var(--warn); }
+.matrix.adh td.miss { color: var(--danger); font-weight: 600; }
+.matrix.adh small { font-size: 11px; color: var(--muted); }
+.legend { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+.medtable td { font-size: 14px; }
+
+@media print {
+  .tabbar { display: none !important; }
+  .app { padding-bottom: 0; }
+}
