@@ -1,7 +1,12 @@
 name: Deploy to Cloudflare Workers
 
-# Deploy ด้วย GitHub Actions — ต้องตั้ง secrets CLOUDFLARE_API_TOKEN และ CLOUDFLARE_ACCOUNT_ID
-# ถ้าไม่ได้ตั้ง (เช่น fork ไปหรือใช้ปุ่ม Deploy to Cloudflare ซึ่งมี CI ของ Cloudflare เอง) จะข้ามการ deploy
+# Deploy ด้วย GitHub Actions เมื่อ push เข้า main
+#
+# GitHub secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   จำเป็น — ถ้าไม่ได้ตั้ง (เช่น fork ไป หรือใช้ปุ่ม Deploy to Cloudflare) จะข้ามการ deploy
+#   CLOUDFLARE_ACCOUNT_ID  ไม่บังคับ — ต้องใส่ถ้า token เข้าถึงได้มากกว่า 1 account
+#   APP_PASSWORD           ไม่บังคับ — ถ้าใส่ จะตั้งเป็นรหัสผ่านเข้าแอปให้ทุกครั้งที่ deploy
+#   API_TOKEN              ไม่บังคับ — token สำหรับบันทึกผ่าน API / iOS Shortcuts
 
 on:
   push:
@@ -22,10 +27,10 @@ jobs:
       - name: Check Cloudflare credentials
         id: creds
         run: |
-          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::ยังไม่ได้ตั้ง CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID — ข้ามการ deploy"
+            echo "::notice::ยังไม่ได้ตั้ง CLOUDFLARE_API_TOKEN — ข้ามการ deploy"
           fi
 
       - uses: actions/checkout@v4
@@ -47,3 +52,18 @@ jobs:
       - name: Migrate D1 and deploy
         if: steps.creds.outputs.ready == 'true'
         run: npm run deploy
+
+      - name: Set Worker secrets from GitHub secrets
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+        run: |
+          if [ -n "$APP_PASSWORD" ]; then
+            printf '%s' "$APP_PASSWORD" | npx wrangler secret put APP_PASSWORD
+          else
+            echo "::notice::ไม่ได้ตั้ง GitHub secret APP_PASSWORD — ใช้ค่าที่ตั้งไว้บน Cloudflare เดิม (ถ้ายังไม่เคยตั้ง แอปจะยังล็อกอินไม่ได้)"
+          fi
+          if [ -n "$API_TOKEN" ]; then
+            printf '%s' "$API_TOKEN" | npx wrangler secret put API_TOKEN
+          fi

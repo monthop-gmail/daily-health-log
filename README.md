@@ -43,7 +43,7 @@
 npm ci
 npx wrangler login
 
-# 1) สร้างฐานข้อมูล D1 แล้วเอา database_id ไปใส่แทน 00000000-... ใน wrangler.jsonc
+# 1) สร้างฐานข้อมูล D1 แล้วเอา database_id ไปใส่แทนค่าเดิมใน wrangler.jsonc
 npx wrangler d1 create daily-health-log
 
 # 2) ตั้งรหัสผ่านเข้าแอป (อย่างน้อย 8 ตัว)
@@ -57,15 +57,17 @@ npm run deploy
 
 ### แบบที่ 3: deploy อัตโนมัติด้วย GitHub Actions
 
-ทำข้อ 1–2 ของแบบที่ 2 ก่อน (commit `database_id` ของคุณเข้า repo) แล้วตั้ง secrets ใน repo (Settings → Secrets and variables → Actions):
+ทำข้อ 1 ของแบบที่ 2 ก่อน (commit `database_id` ของคุณเข้า repo) แล้วตั้ง secrets ใน repo (Settings → Secrets and variables → Actions):
 
-| Secret | ค่า |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | สร้างจาก template **Edit Cloudflare Workers** แล้วเพิ่มสิทธิ์ **Account → D1 → Edit** |
-| `CLOUDFLARE_ACCOUNT_ID` | Account ID จากหน้า Workers & Pages |
+| Secret | | ค่า |
+|---|---|---|
+| `CLOUDFLARE_API_TOKEN` | จำเป็น | สร้างจาก template **Edit Cloudflare Workers** แล้วเพิ่มสิทธิ์ **Account → D1 → Edit** |
+| `APP_PASSWORD` | แนะนำ | รหัสผ่านเข้าแอป (อย่างน้อย 8 ตัว) — workflow จะตั้งให้ Worker เอง |
+| `CLOUDFLARE_ACCOUNT_ID` | ไม่บังคับ | ใส่เมื่อ token เข้าถึงได้หลาย account |
+| `API_TOKEN` | ไม่บังคับ | token สำหรับบันทึกผ่าน API / Shortcuts |
 
-push เข้า `main` แล้ว workflow `.github/workflows/deploy.yml` จะสร้างตารางที่ยังไม่มีแล้ว deploy ให้
-ถ้าไม่ได้ตั้ง secrets สองตัวนี้ workflow จะข้ามการ deploy (ไม่ error) — ใช้คู่กับแบบที่ 1 ได้ไม่ชนกัน
+push เข้า `main` (หรือกด Run workflow ในแท็บ Actions) แล้ว workflow `.github/workflows/deploy.yml` จะสร้างตารางที่ยังไม่มี deploy และตั้งรหัสผ่านให้
+ถ้าไม่ได้ตั้ง `CLOUDFLARE_API_TOKEN` workflow จะข้ามการ deploy (ไม่ error) — ใช้คู่กับแบบที่ 1 ได้ไม่ชนกัน
 
 ## รันในเครื่อง
 
