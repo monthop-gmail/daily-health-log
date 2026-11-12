@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "daily-health-log",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  // หน้าเว็บ (ไฟล์ใน public/) เสิร์ฟตรงจาก Workers Static Assets
+  // ส่วน /api/* ให้ Worker จัดการก่อนเสมอ
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // ถ้า deploy ด้วยปุ่ม "Deploy to Cloudflare" ระบบจะสร้างฐานข้อมูลและแก้ database_id ให้เอง
+  // ถ้า deploy เองด้วย wrangler: รัน `npx wrangler d1 create daily-health-log`
+  // แล้วเอา database_id ที่ได้มาใส่แทนค่าด้านล่าง
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "daily-health-log",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "observability": { "enabled": true }
+
+  // Secrets (ตั้งด้วย npx wrangler secret put <NAME>):
+  //   APP_PASSWORD  — รหัสผ่านเข้าแอป อย่างน้อย 8 ตัว (จำเป็น)
+  //   API_TOKEN     — token สำหรับบันทึกผ่าน API/Shortcuts (ไม่บังคับ)
+}

@@ -1,0 +1,29 @@
+{
+  "name": "daily-health-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "เว็บแอปบันทึกกิจวัตรประจำวัน/สังเกตสุขภาพ บน Cloudflare Workers + D1",
+  "license": "MIT",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run db:migrate:remote && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "typecheck": "tsc --noEmit"
+  },
+  "cloudflare": {
+    "bindings": {
+      "APP_PASSWORD": {
+        "description": "รหัสผ่านสำหรับเข้าแอป **อย่างน้อย 8 ตัว** (Password to sign in to the app, at least 8 characters)."
+      },
+      "DB": {
+        "description": "ฐานข้อมูลเก็บบันทึก — ระบบสร้างให้อัตโนมัติ (D1 database for your entries, created automatically)."
+      }
+    }
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261110.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.160.1"
+  }
+}

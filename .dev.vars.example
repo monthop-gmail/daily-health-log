@@ -1,0 +1,8 @@
+# รหัสผ่านเข้าแอป (อย่างน้อย 8 ตัว)
+# - รันในเครื่อง: คัดลอกไฟล์นี้เป็น .dev.vars แล้วใส่รหัสผ่าน
+# - ปุ่ม Deploy to Cloudflare จะถามค่านี้ตอน deploy
+APP_PASSWORD=
+
+# ไม่บังคับ: token สำหรับบันทึกผ่าน API / iOS Shortcuts
+# (คอมเมนต์ไว้ เพราะปุ่ม Deploy จะบังคับกรอกทุกค่าที่อยู่ในไฟล์นี้ — ตั้งทีหลังด้วย wrangler secret put API_TOKEN)
+# API_TOKEN=

@@ -1,0 +1,49 @@
+name: Deploy to Cloudflare Workers
+
+# Deploy ด้วย GitHub Actions — ต้องตั้ง secrets CLOUDFLARE_API_TOKEN และ CLOUDFLARE_ACCOUNT_ID
+# ถ้าไม่ได้ตั้ง (เช่น fork ไปหรือใช้ปุ่ม Deploy to Cloudflare ซึ่งมี CI ของ Cloudflare เอง) จะข้ามการ deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check Cloudflare credentials
+        id: creds
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::ยังไม่ได้ตั้ง CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID — ข้ามการ deploy"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.creds.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.creds.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - if: steps.creds.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Type check
+        if: steps.creds.outputs.ready == 'true'
+        run: npm run typecheck
+
+      - name: Migrate D1 and deploy
+        if: steps.creds.outputs.ready == 'true'
+        run: npm run deploy
